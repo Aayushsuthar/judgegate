@@ -1,0 +1,122 @@
+name: judgegate
+description: >-
+  Statistical trust gate for LLM judges. Fails CI when the judge does not
+  agree with human labels well enough to gate.
+author: Yashwanth Chimata
+branding:
+  icon: user-check
+  color: green
+
+inputs:
+  labels:
+    description: Path to the human-labeled examples file.
+    required: true
+  config:
+    description: Path to the judge.yaml configuration.
+    required: true
+  min-kappa:
+    description: Trust threshold override.
+    required: false
+    default: ""
+  alpha:
+    description: Significance level override.
+    required: false
+    default: ""
+  no-probes:
+    description: Skip the probe battery.
+    required: false
+    default: "false"
+  comment:
+    description: Post the report as a sticky pull request comment.
+    required: false
+    default: "true"
+  fail-on-inconclusive:
+    description: Fail the check when there are too few labels to decide.
+    required: false
+    default: "false"
+  github-token:
+    description: Token used to post the pull request comment.
+    required: false
+    default: ${{ github.token }}
+  python-version:
+    description: Python version used to run judgegate.
+    required: false
+    default: "3.12"
+
+outputs:
+  verdict:
+    description: TRUSTED, UNTRUSTED, INCONCLUSIVE, or ERROR.
+    value: ${{ steps.gate.outputs.verdict }}
+  exit-code:
+    description: Raw judgegate exit code (0, 1, 2, or 3).
+    value: ${{ steps.gate.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install judgegate
+      shell: bash
+      run: python -m pip install --quiet "${{ github.action_path }}"
+
+    - name: Run gate
+      id: gate
+      shell: bash
+      env:
+        INPUT_LABELS: ${{ inputs.labels }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_MIN_KAPPA: ${{ inputs.min-kappa }}
+        INPUT_ALPHA: ${{ inputs.alpha }}
+        INPUT_NO_PROBES: ${{ inputs.no-probes }}
+      run: |
+        set +e
+        args=(verify "$INPUT_LABELS" --config "$INPUT_CONFIG"
+              --format markdown --output judgegate-report.md)
+        if [ -n "$INPUT_MIN_KAPPA" ]; then args+=(--min-kappa "$INPUT_MIN_KAPPA"); fi
+        if [ -n "$INPUT_ALPHA" ]; then args+=(--alpha "$INPUT_ALPHA"); fi
+        if [ "$INPUT_NO_PROBES" = "true" ]; then args+=(--no-probes); fi
+        judgegate "${args[@]}"
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        case "$code" in
+          0) verdict=TRUSTED ;;
+          1) verdict=UNTRUSTED ;;
+          2) verdict=INCONCLUSIVE ;;
+          *) verdict=ERROR ;;
+        esac
+        echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+        if [ -f judgegate-report.md ]; then
+          cat judgegate-report.md >> "$GITHUB_STEP_SUMMARY"
+        fi
+        exit 0
+
+    - name: Comment on pull request
+      if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: python "${{ github.action_path }}/scripts/upsert_comment.py" judgegate-report.md
+
+    - name: Enforce verdict
+      shell: bash
+      env:
+        CODE: ${{ steps.gate.outputs.exit-code }}
+        VERDICT: ${{ steps.gate.outputs.verdict }}
+        FAIL_ON_INCONCLUSIVE: ${{ inputs.fail-on-inconclusive }}
+      run: |
+        echo "judgegate verdict: $VERDICT (exit code $CODE)"
+        if [ "$CODE" = "1" ]; then
+          echo "blocking: this judge should not gate anything yet"
+          exit 1
+        fi
+        if [ "$CODE" = "2" ] && [ "$FAIL_ON_INCONCLUSIVE" = "true" ]; then
+          echo "failing: too few labels to decide and fail-on-inconclusive is set"
+          exit 1
+        fi
+        if [ "$CODE" != "0" ] && [ "$CODE" != "2" ]; then
+          echo "judgegate failed to run"
+          exit "$CODE"
+        fi

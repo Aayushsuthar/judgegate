@@ -1,0 +1,26 @@
+judge:
+  endpoint: https://api.openai.com/v1
+  model: gpt-4o-mini
+  api_key_env: OPENAI_API_KEY
+  temperature: 0.0
+  prompt: |
+    You are grading whether an answer is factually correct.
+
+    Question: {input}
+    Answer: {output}
+
+    Respond with JSON only: {"label": "pass"} if the answer is correct,
+    {"label": "fail"} if it is not.
+  extraction:
+    method: json_field
+    field: label
+
+labels:
+  values: [fail, pass]
+  ordinal: false
+
+gate:
+  min_kappa: 0.6
+  alpha: 0.05
+  power: 0.8
+  seed: 42

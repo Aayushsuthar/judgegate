@@ -1,0 +1,27 @@
+name: Probe proposal
+description: Propose a new judge bias or failure-mode probe
+labels: [probe, enhancement]
+body:
+  - type: textarea
+    id: failure-mode
+    attributes:
+      label: The failure mode
+      description: >-
+        What judge behavior does this probe catch? Link papers, incident
+        reports, or reproducible examples that document it.
+    validations:
+      required: true
+  - type: textarea
+    id: measurement
+    attributes:
+      label: How to measure it
+      description: >-
+        The perturbation or comparison, the effect size it produces, and
+        what a reasonable default tolerance would be.
+    validations:
+      required: true
+  - type: textarea
+    id: applicability
+    attributes:
+      label: When it applies
+      description: Grader or pairwise judges? Offline or does it need live judge calls?

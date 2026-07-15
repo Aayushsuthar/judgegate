@@ -1,0 +1,34 @@
+name: Bug report
+description: Something behaved incorrectly
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: judgegate version
+      description: Output of `judgegate --version`
+      placeholder: judgegate, version 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and output
+      description: The exact command you ran and what it printed, including the exit code.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal labels file
+      description: >-
+        If possible, a few lines of a labels file that reproduce the issue.
+        If the data is sensitive, the output of `judgegate validate` on it
+        is a good start.

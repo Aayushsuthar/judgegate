@@ -1,0 +1,18 @@
+name: Judge gate
+
+on: pull_request
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Gate the example judge
+        uses: ./
+        with:
+          labels: examples/labels.jsonl
+          config: examples/judge.yaml
