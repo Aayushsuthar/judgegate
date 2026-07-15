@@ -131,7 +131,7 @@ jobs:
 The action posts a sticky comment with the verdict, kappa error bar, and
 probe table, updates it in place on every push, and fails the check only
 on UNTRUSTED (or on INCONCLUSIVE if you set `fail-on-inconclusive: true`).
-Details in [docs/github-action.md](docs/github-action.md).
+Details in [docs/github-action.md](docs/github-action.md). GitLab CI users: see [docs/gitlab-ci.md](docs/gitlab-ci.md).
 
 **See it live:** this repository gates its own example judge on every pull
 request; the [open demo pull requests](https://github.com/yashchimata/judgegate/pulls?q=is%3Apr+is%3Aopen+label%3Ademo)
